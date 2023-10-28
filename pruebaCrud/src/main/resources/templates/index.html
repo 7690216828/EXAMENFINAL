@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="text/javascript" src="jspdf.min.js"></script>
+
+    <style>
+        body{
+            background-image: url("termina-back.JPG");
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+
+    </style>
+</head>
+<body>
+
+
+<div class="container mt-5 p-3 bg-secondary">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="text-center">Agregar Producto</h4>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <input type="hidden" class="form-control" id="id" placeholder="Ingresa ID">
+                    </div>
+                    <div class="form-group">
+                        <label for="">Ingresa nombre</label>
+                        <input type="text" class="form-control" id="nombre" placeholder="Ingresa Nombre">
+                    </div>
+                    <div class="form-group">
+                        <label for="">Ingresa Precio</label>
+                        <input type="text" class="form-control" id="precio" placeholder="Precio del Producto">
+                    </div>
+                    <div class="form-group">
+                        <label for="">Cantidad</label>
+                        <input type="text" class="form-control" id="cantidad" placeholder="Ingresa Cantidad">
+                    </div>
+                    <div class="form-group">
+                        <label for="">Fecha Vencimiento</label>
+                        <input type="date" class="form-control" id="fechavencimiento" placeholder="Ingresa fecha Vencimiento" >
+                    </div>
+
+                    <div class="mt-3">
+                        <button class="btn btn-primary float-right" onclick="submitForm()">Guardar Producto</button>
+                    </div>
+                    <br>
+                    <div class="form-group">
+                        <label for="">Buscar producto</label>
+                        <input type="text" class="form-control" id="buscarproducto" placeholder="Buscar producto" >
+                        <button class="btn btn-primary float-right" onclick="buscarproducto()">Buscar Producto</button>
+                    </div>
+                    <br>
+                    <br>
+                    <div class="form-group">
+                        <button class="btn btn-primary float-right" onclick="generarpdf()">PDF</button>
+                    </div>
+
+                    <div class="w-100">
+                        <span id="message" class="text-success"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <table class="table table-bordered text-white text-center">
+                <thead>
+                <th>Id</th>
+                <th>Nombre</th>
+                <th>Precio</th>
+                <th>Cantidad</th>
+                <th>Fecha Vencimiento</th>
+                <th>Edit</th>
+                <th>Delete</th>
+                </thead>
+                <tbody id="tbData">
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+
+
+    function generarpdf() {
+        fetch("http://localhost:8080/CRUDRepo/ConsultarProducto")
+            .then((res) => res.json())
+            .then((response) => {
+                console.log(response);
+
+                // Crear un nuevo objeto jspdf
+                var doc = new jsPDF();
+
+                // Definir la posición inicial para el contenido del PDF
+                var y = 10;
+
+                // Recorrer los elementos en response y agregarlos al PDF
+                response.forEach((producto, index) => {
+                    doc.text(10, y, `Producto ${index + 1}`);
+                    doc.text(20, y + 10, `ID: ${producto.id}`);
+                    doc.text(20, y + 20, `Nombre: ${producto.nombreProducto}`);
+                    doc.text(20, y + 30, `Precio: ${producto.precioProducto}`);
+                    doc.text(20, y + 40, `Cantidad: ${producto.cantidadProducto}`);
+                    doc.text(20, y + 50, `Fecha de Vencimiento: ${producto.fechaVencimiento}`);
+
+                    // Incrementar la posición vertical para el siguiente elemento
+                    y += 60;
+                });
+
+                // Guardar el PDF con un nombre específico
+                doc.save('REPORTE.pdf');
+            })
+            .catch((error) => {
+                console.error('Error al generar el PDF:', error);
+            });
+    }
+
+
+    var editFormData;
+
+    function getFormData() {
+        return {
+            id:document.getElementById("id").value,
+            nombreProducto:document.getElementById("nombre").value,
+            precioProducto:document.getElementById("precio").value,
+            cantidadProducto:document.getElementById("cantidad").value,
+            fechaVencimiento:document.getElementById("fechavencimiento").value
+        }
+    }
+    function clearFormData() {
+        document.getElementById("id").value = "";
+        document.getElementById("nombre").value = "";
+        document.getElementById("precio").value = "";
+        document.getElementById("cantidad").value = "";
+        document.getElementById("fechavencimiento").value = "";
+    }
+
+    function setFormData(id,nombre,precio,cantidad,fechavencimiento) {
+        document.getElementById("id").value = id;
+        document.getElementById("nombre").value = nombre;
+        document.getElementById("precio").value = precio;
+        document.getElementById("cantidad").value = cantidad;
+        document.getElementById("fechavencimiento").value = fechavencimiento;
+    }
+
+    // set the message for form status
+    function setSuccessMessage(message) {
+        document.getElementById("message").innerHTML = message;
+    }
+    function editDataCall(id) {
+        // call get user details by id API
+        fetch("http://localhost:8080/CRUDRepo/BuscarProducto/"+id,{
+            method:"GET"
+        }).then((res)=>res.json()).then((response)=>{
+            console.log("Edit info",response);
+            editFormData =  response[0];
+            setFormData(
+                response.id,                 // ID del producto
+                response.nombreProducto,     // Nombre del producto
+                response.precioProducto,    // Precio del producto
+                response.cantidadProducto,  // Cantidad del producto
+                response.fechaVencimiento    // Fecha de vencimiento del producto
+            );
+
+        })
+    }
+
+
+    // callled this function when user click on button
+    function submitForm() {
+        if(!editFormData) agregarproducto(); // if the editFormData is undefined then call addUser()
+        else editData();
+    }
+    // add user function
+    function agregarproducto() {
+        let payload  = getFormData();
+        fetch("http://localhost:8080/CRUDRepo/CrearProducto",{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify(payload)
+        }).then((res)=>res.json()).then((response)=>{
+            setSuccessMessage(response.message)
+            // clear input email and name
+            setSuccessMessage("Producto agregado con éxito.");
+            clearFormData();
+            getData(); // reload table
+        })
+    }
+
+    // edit data
+    function editData() {
+        var formData = getFormData();
+        formData['id'] = editFormData.id; // get _id from selected user
+        fetch("http://localhost:8080/CRUDRepo/ModificarProducto",{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify(formData)
+        }).then((res)=>res.json()).then((response)=>{
+            setSuccessMessage("Producto modificado con éxito.");
+            clearFormData(); // clear the form field
+            getData() // reload the table
+        })
+    }
+
+    // delete data
+
+    function deleteData(id) {
+        fetch("http://localhost:8080/CRUDRepo/EliminarProducto/" + id, {
+            method: "DELETE"
+        })
+            .then((response) => {
+                if (response.ok) {
+                    setSuccessMessage("Producto eliminado con éxito.");
+                    getData();
+                } else {
+                    setErrorMessage("Error al eliminar el producto.");
+                }
+            })
+            .catch((error) => {
+                console.error("Error al eliminar el producto:", error);
+            });
+    }
+
+
+    function buscarproducto() {
+        const searchInput = document.getElementById('buscarproducto');
+        const productId = searchInput.value;
+        if (!productId) {
+            alert('Por favor, ingresa un ID de producto válido.');
+            return;
+        }
+
+
+
+        fetch("http://localhost:8080/CRUDRepo/BuscarProducto/"+productId)
+            .then(response => response.json())
+            .then(product => {
+                if (product) {
+                    // Limpiar la tabla actual
+                    const dataContainer = document.getElementById('tbData');
+                    dataContainer.innerHTML = '';
+
+                    // Crear una fila para el producto encontrado
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                    <td>${product.id}</td>
+                    <td>${product.nombreProducto}</td>
+                    <td>${product.precioProducto}</td>
+                    <td>${product.cantidadProducto}</td>
+                    <td>${product.fechaVencimiento}</td>
+                    <!-- Botones Editar y eliminar -->
+                    <td><button class='btn btn-primary' onclick='editDataCall("${product.id}")'>EDITAR</button></td>
+                    <td><button class='btn btn-danger' onclick='deleteData("${product.id}")'>ELIMINAR</button></td>`;
+                    dataContainer.appendChild(row);
+                } else {
+                    alert('No se encontró ningún producto con el ID proporcionado.');
+                }
+            })
+            .catch(error => {
+                console.error('Error al buscar el producto:', error);
+            });
+
+    }
+
+        // get data method
+
+    function getData() {
+        fetch("http://localhost:8080/CRUDRepo/ConsultarProducto"
+        ).then(
+            (res)=>res.json()
+        ).then((response)=>{
+            var tmpData  = "";
+            console.log(response);
+            response.forEach((producto)=>{
+                tmpData+="<tr>"
+                tmpData+="<td>"+producto.id+"</td>";
+                tmpData+="<td>"+producto.nombreProducto+"</td>";
+                tmpData+="<td>"+producto.precioProducto+"</td>";
+                tmpData+="<td>"+producto.cantidadProducto+"</td>";
+                tmpData+="<td>"+producto.fechaVencimiento+"</td>";
+                tmpData+="<td><button class='btn btn-primary' onclick='editDataCall(`"+producto.id+"`)'>EDITAR</button></td>";
+                tmpData+="<td><button class='btn btn-danger' onclick='deleteData(`"+producto.id+"`)'>ELIMINAR</button></td>";
+
+                tmpData+="</tr>";
+            })
+            document.getElementById("tbData").innerHTML = tmpData;
+            console.log(tmpData);
+        })
+    }
+    getData();
+
+</script>
+</body>
+</html>
